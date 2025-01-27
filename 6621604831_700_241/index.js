@@ -13,7 +13,7 @@ function submitData(){
     }
 
     let userData = {
-        firstName: firstNameDOM.value,
+        firstName:firstNameDOM.value,
         lastName: lastNameDOM.value,
         age: ageDOM.value,
         gender: genderDOM.value,
