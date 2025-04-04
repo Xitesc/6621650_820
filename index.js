@@ -1,75 +1,146 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const app = express();
+const BASE_URL = 'http://localhost:8000'
+let mode = 'CREATE' //default mode
+let selectId = ''
 
-app.use(bodyParser.json());
-const port = 8000;
+window.onload = async() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const id = urlParams.get('id')
+    console.log('id',id)
+    if (id) {
+        mode = 'EDIT'
+        selectId = id
 
-// เก็บ user
-let users = []
-let counter =1
+        //1. ดึงข้อมูล user ที่ต้องการ edit มาแสดง
+        try {
+            const response = await axios.get(`${BASE_URL}/users/${id}`)
+            const user = response.data
+        
+        //2. เราจะนำข้อมูลของ user ที่ดึงมา ใส่ใน input ที่เรามี
+        let firstNameDom = document.querySelector('input[name=firstname]')
+        let lastNameDom = document.querySelector('input[name=lastname]')
+        let ageDom = document.querySelector('input[name=age]')
+        let descriptionDom = document.querySelector('textarea[name=description]')
+        
+        firstNameDom.value = user.firstname
+        lastNameDom.value = user.lastname
+        ageDom.value = user.age
+        descriptionDom.value = user.description
+        
+        let genderDom = document.querySelectorAll('input[name=gender]')
+        let interestDoms = document.querySelectorAll('input[name=interest]')
 
-/*
-GET /users สำหรับ get ข้อมูล user ทั้งหมด
-POST /user สำหรับสร้าง create user ใหม่บันทึกเข้าไป
-PUT /user/:id สำหรับ update ข้อมูล user รายคนที่ต้องการบันทึกเข้าไป
-DELETE /user/:id สำหรับลบ user รายคนที่ต้องการออกไป
-GET /user/:id สำหรับ get ข้อมูล user รายคนที่ต้องการ
-*/
-// path = GET /users
-app.get('/users', (req, res) => {
-  res.json(users);
-})
-
-// path = POST/user
-app.post('/user', (req, res) => {
-  let user = req.body;
-  user.id = counter
-  counter += 1
-  users.push(user);
-  res.json({
-    message: 'User created',
-    user: user
-  });
-})
-
-// path = PUT /user/:id
-app.put('/user/:id', (req, res) => {
-  let id = req.params.id;
-  let updateUser = req.body;
-// หา index ของ user ที่ต้องการ update
-  let selectedIndex = users.findIndex(user => user.id == id)
-// update ข้อมูล user
-if (updateUser.firstname) {
-  users[selectedIndex].firstname = updateUser.firstname
-}
-  
-if (updateUser.lastname) {
-  user[selectedIndex].lastname = updateUser.lastname || users[selectedIndex].lastname
-}
-
-  res.json({
-    message: 'User updated',
-    data: {
-      user: updateUser,
-      indexUpdated: selectedIndex
+        for (let i = 0; i < genderDom.length; i++) {
+            if (genderDom[i].value == user.gender) {
+                genderDom[i].checked = true
+            }
+        }
+        
+        for (let i = 0; i < interestDoms.length; i++) {
+            if (user.interests.includes(interestDoms[i].value)) {
+                interestDoms[i].checked = true
+            }
+        }
+        }catch (error) {
+            console.log('error',error)
+        }
     }
- });
-})
+}
 
-// path = DELETE /user/:id
-app.delete('/user/:id', (req, res) => {
-  let id = req.params.id;
-  // หา index ของ user ที่ต้องการลบ
-  let selectedIndex = users.findIndex(user => user.id == id)
+const validateData = (userData) => {
+   let errors = []
+   if (!userData.firstname) {
+       errors.push('กรุณากรอกชื่อ')
+   }
+   if (!userData.lastname) {
+       errors.push('กรุณากรอกนามสกุล')
+   }
+   if (!userData.age) {
+       errors.push('กรุณากรอกอายุ')
+   }
+   if (!userData.gender) {
+       errors.push('กรุณาเลือกเพศ')
+   }
+   if (!userData.interests) {
+       errors.push('กรุณาเลือกความสนใจ')
+   }
+   if (!userData.description) {
+       errors.push('กรุณากรอกข้อมูล')
+   }
+   return errors
+}
+const submitData = async () => {
+    let firstNameDom = document.querySelector('input[name=firstname]');
+    let lastNameDom = document.querySelector('input[name=lastname]');
+    let ageDom = document.querySelector('input[name=age]');
+    let genderDom = document.querySelector('input[name=gender]:checked') || {}
+    let interestDoms = document.querySelectorAll('input[name=interest]:checked') || {}
+    let descriptionDom = document.querySelector('textarea[name=description]');
+    
+    let messageDOM = document.getElementById('message');
+    
+    try {
+    let interest = ''
+    for (let i = 0; i < interestDoms.length; i++) {
+        interest += interestDoms[i].value;
+        if (i != interestDoms.length - 1) {
+            interest += ', '
+        }
+    }
 
-  users.splice(selectedIndex, 1)
-  res.json({
-    message: "Deleted Completed",
-    indexDeleted: selectedIndex
-  });
-})
+    let userData = {
+        firstname: firstNameDom.value,
+        lastname: lastNameDom.value,
+        age: ageDom.value,
+        gender: genderDom.value,
+        description: descriptionDom.value,
+        interests: interest
+    }
+    console.log('submitData',userData);
+    /*
+        const errors = validateData(userData)
 
-app.listen(port, (req,res) => {
-  console.log('Server is running on port '+ port);
-});
+        if(errors.length > 0) {
+            //มี error
+            throw {
+                message: 'กรุณากรอกข้อมูลให้ครบถ้วน',
+                errors : errors
+            }
+        }
+    */
+        let message = 'บันทึกข้อมูลเรียบร้อย'
+        if (mode == 'CREATE') {
+          const response = await axios.post(`${BASE_URL}/users`, userData)
+          console.log('response',response.data)
+        } else {
+          const response = await axios.put(`${BASE_URL}/users/${selectId}`, userData)
+          message = 'แก้ไขข้อมูลเรียบร้อย'
+          console.log('response',response.data)
+        }
+        setTimeout(() => {
+            window.location.href = 'user.html'
+        }, 250);
+        messageDOM.innerText = message
+        messageDOM.className = 'message success'
+    } catch (error) {
+        console.log('error message',error.message)
+        console.log('error',error.errors)
+        
+       if (error.response) {
+            console.log('error',error.response.data.message)
+            error.message = error.response.data.message
+            error.errors = error.response.data.errors
+       }
+        
+       let htmlData = '<div>'
+       htmlData += `<div> ${error.message} <div>`
+       htmlData += '<ul>'
+       for (let i = 0; i < error.errors.length; i++) {
+           htmlData += `<li> ${error.errors[i]} </li>`
+       }
+       htmlData += '</ul>'
+       htmlData += '</div>'
+
+       messageDOM.innerHTML = htmlData
+       messageDOM.className = 'message danger'
+    }
+}
